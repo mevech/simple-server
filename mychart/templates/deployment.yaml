@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Value.Name }}
+  labels:
+    app: {{ .Value.Name }}
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{ .Value.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Value.Name }}
+    spec:
+      serviceAccountName: {{ .Value.Name }}-sa
+      containers:
+        - name: {{ .Value.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+

@@ -1,0 +1,44 @@
+## This is basic continuous integration build for your Quarkus application.
+
+name: Deploy to Kubernetes Cluster
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    matrix:
+      region: [ "eu-west-1", "us-east-1"]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup IAM Role
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ matrix.region }}
+          role-to-assume: ${{ secrets.deployer_role_arn }}
+
+      - name: Get Kubectl file
+        shell: bash
+        run: |
+          aws eks update-kubeconfig --cluster-name mycluster
+
+      - name: Install helm cli
+        uses: azure/setup-helm@v1
+        id: install
+
+      - uses: jwalton/gh-find-current-pr@v1
+        id: findPr
+        with:
+          state: all
+
+      - name: Deploy using helm
+        shell: bash
+        run: |
+          helm upgrade --install simple-server ./mychart \
+            --set image.repository= ${{ secrets.aws_account }}.dkr.ecr.eu-west-1.amazonaws.com \
+            --set image.tag = ${{ env.PR_NUMBER }}-${{ github.head_ref }}
+        env:
+          PR_NUMBER: ${{ steps.findPr.outputs.pr }}
